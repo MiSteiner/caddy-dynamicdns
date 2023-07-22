@@ -298,7 +298,7 @@ func (a App) lookupCurrentIPsFromDNS(domains map[string][]string) (domainTypeIPs
 						recMap[name] = make(map[string]net.IP)
 					}
 					recMap[name][r.Type] = ip
-					a.logger.Debug("Saving to map", zap.String("name", name), zap.String("type", r.Type), zap.String("IP", ip))
+					a.logger.Debug("Saving to map", zap.String("name", name), zap.String("type", r.Type))
 				} else {
 					a.logger.Error("invalid IP address found in current DNS record", zap.String("value", r.Value), zap.String("type", r.Type))
 				}
