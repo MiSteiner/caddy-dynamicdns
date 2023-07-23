@@ -303,7 +303,7 @@ func (a App) lookupCurrentIPsFromDNS(domains map[string][]string) (domainTypeIPs
 						recMap[name] = make(map[string]net.IP)
 					}
 					recMap[name][r.Type] = ip
-					recordID := r.ID
+					recordID = r.ID
 					a.logger.Debug("Saving to map", zap.String("name", name), zap.String("type", r.Type))
 					a.logger.Debug("Saving record ID", zap.String("ID", r.ID))
 				} else {
