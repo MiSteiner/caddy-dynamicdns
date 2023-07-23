@@ -223,7 +223,6 @@ func (a App) checkIPAndUpdateDNS() {
 				updatedRecsByZone[zone] = append(updatedRecsByZone[zone], libdns.Record{
 					ID: recordID,
 					Type:  recordType(ip),
-					Name:  domain,
 					Value: ip.String(),
 					TTL:   time.Duration(a.TTL),
 				})
