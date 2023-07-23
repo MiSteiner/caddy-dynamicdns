@@ -167,13 +167,14 @@ func (a App) checkIPAndUpdateDNS() {
 	lastIPsMu.Lock()
 	defer lastIPsMu.Unlock()
 
+	var recordID string
 	var err error
 
 	allDomains := a.allDomains()
 
 	// if we don't know current IPs, look them up from DNS
 	if lastIPs == nil {
-		lastIPs, err = a.lookupCurrentIPsFromDNS(allDomains)
+		lastIPs, recordID,  err = a.lookupCurrentIPsFromDNS(allDomains)
 		if err != nil {
 			// not the end of the world, but might be an extra initial API hit with the DNS provider
 			a.logger.Error("unable to lookup current IPs from DNS records", zap.Error(err))
@@ -220,7 +221,9 @@ func (a App) checkIPAndUpdateDNS() {
 				}
 
 				updatedRecsByZone[zone] = append(updatedRecsByZone[zone], libdns.Record{
+					ID: recordID,
 					Type:  recordType(ip),
+					Name:  domain,
 					Value: ip.String(),
 					TTL:   time.Duration(a.TTL),
 				})
@@ -236,6 +239,7 @@ func (a App) checkIPAndUpdateDNS() {
 	for zone, records := range updatedRecsByZone {
 		for _, rec := range records {
 			a.logger.Info("updating DNS record",
+				zap.String("ID", rec.ID),
 				zap.String("zone", zone),
 				zap.String("type", rec.Type),
 				zap.String("name", rec.Name),
@@ -272,11 +276,12 @@ func (a App) checkIPAndUpdateDNS() {
 
 // lookupCurrentIPsFromDNS looks up the current IP addresses
 // from DNS records.
-func (a App) lookupCurrentIPsFromDNS(domains map[string][]string) (domainTypeIPs, error) {
+func (a App) lookupCurrentIPsFromDNS(domains map[string][]string) (domainTypeIPs, string, error) {
 	types := []string{recordTypeA, recordTypeAAAA}
 
 	// avoid duplicates
 	currentIPs := make(domainTypeIPs)
+	var recordID string
 
 	if recordGetter, ok := a.dnsProvider.(libdns.RecordGetter); ok {
 		for zone, names := range domains {
@@ -290,7 +295,7 @@ func (a App) lookupCurrentIPsFromDNS(domains map[string][]string) (domainTypeIPs
 				if r.Type != recordTypeA && r.Type != recordTypeAAAA {
 					continue
 				}
-				a.logger.Debug("found DNS record", zap.String("type", r.Type), zap.String("name", r.Name), zap.String("zone", zone), zap.String("value", r.Value))
+				a.logger.Debug("found DNS record", zap.String("rrid", r.ID), zap.String("type", r.Type), zap.String("name", r.Name), zap.String("zone", zone), zap.String("value", r.Value))
 				ip := net.ParseIP(r.Value)
 				if ip != nil {
 					name := joinDomainZone(r.Name, zone)
@@ -298,7 +303,9 @@ func (a App) lookupCurrentIPsFromDNS(domains map[string][]string) (domainTypeIPs
 						recMap[name] = make(map[string]net.IP)
 					}
 					recMap[name][r.Type] = ip
+					recordID := r.ID
 					a.logger.Debug("Saving to map", zap.String("name", name), zap.String("type", r.Type))
+					a.logger.Debug("Saving record ID", zap.String("ID", r.ID))
 				} else {
 					a.logger.Error("invalid IP address found in current DNS record", zap.String("value", r.Value), zap.String("type", r.Type))
 				}
@@ -319,7 +326,7 @@ func (a App) lookupCurrentIPsFromDNS(domains map[string][]string) (domainTypeIPs
 		}
 	}
 
-	return currentIPs, nil
+	return currentIPs, recordID , nil
 }
 
 func (a App) lookupManagedDomains() ([]string, error) {
