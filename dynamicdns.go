@@ -287,7 +287,7 @@ func (a App) lookupCurrentIPsFromDNS(domains map[string][]string) (domainTypeIPs
 		for zone, names := range domains {
 			recs, err := recordGetter.GetRecords(a.ctx, zone)
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 
 			recMap := make(map[string]map[string]net.IP)
